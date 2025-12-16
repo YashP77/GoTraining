@@ -161,7 +161,7 @@ func TestReadLastTen_FewerThanTen(t *testing.T) {
 		}
 	}
 
-	// should print all 5 lines
+	// Should print all 5 lines
 	if len(printed) != total {
 		t.Fatalf("Expected %d printed lines, got %d: %v", total, len(printed), printed)
 	}
@@ -172,6 +172,6 @@ func TestReadLastTen_FewerThanTen(t *testing.T) {
 			t.Fatalf("Line %d = %q does not end with %q", i-1, printed[i-1], wantSuffix)
 		}
 	}
-	// cleanup
+	// Cleanup
 	_ = os.Remove("output/Task2Messages.txt")
 }
