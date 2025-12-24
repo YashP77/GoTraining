@@ -17,9 +17,9 @@ func errHand(err error) {
 	}
 }
 
-func OpenFile(ctx context.Context) *os.File {
+func OpenFile(ctx context.Context, fileName string) *os.File {
 
-	messagesFileName := "output/Task2Messages.txt"
+	messagesFileName := "output/" + fileName
 	file, err := os.OpenFile(messagesFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	errHand(err)
 	LogWithTrace(ctx, "File successfully created/located")
@@ -36,9 +36,9 @@ func WriteToFile(ctx context.Context, file os.File, message string, userID int) 
 
 }
 
-func ReadLastTen(ctx context.Context) {
+func ReadLastTen(ctx context.Context, fileName string) {
 
-	f, err := os.Open("output/Task2Messages.txt")
+	f, err := os.Open("output/" + fileName)
 	errHand(err)
 	defer f.Close()
 

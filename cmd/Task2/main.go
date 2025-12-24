@@ -23,12 +23,12 @@ func main() {
 
 	// Create flags
 	message, userID := internal.CliFlags(ctx)
-	file := internal.OpenFile(ctx)
+	file := internal.OpenFile(ctx, "Task2Messages.txt")
 	defer file.Close()
 
 	// Write and read logic
 	internal.WriteToFile(ctx, *file, message, userID)
-	internal.ReadLastTen(ctx)
+	internal.ReadLastTen(ctx, "Task2Messages.txt")
 
 	// Shutdown
 	internal.LogWithTrace(ctx, "Application running. Press CTRL+C to exit")

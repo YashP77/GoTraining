@@ -36,16 +36,16 @@ func captureStdout(t *testing.T, fn func()) string {
 }
 
 func TestOpenFileCreatesFile(t *testing.T) {
-	// Ensure output directory exists (OpenFile expects "output/Task2Messages.txt")
+	// Ensure output directory exists
 	err := os.MkdirAll("output", 0755)
 	if err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 	// Remove file if it already exists to test creation
-	_ = os.Remove("output/Task2Messages.txt")
+	_ = os.Remove("output/Task2TestMessages.txt")
 
 	ctx := context.Background()
-	f := OpenFile(ctx)
+	f := OpenFile(ctx, "Task2TestMessages.txt")
 	if f == nil {
 		t.Fatalf("OpenFile returned nil file")
 	}
@@ -61,7 +61,7 @@ func TestOpenFileCreatesFile(t *testing.T) {
 		t.Fatalf("Failed to close file: %v", err)
 	}
 	// File should now exist
-	info, err := os.Stat("output/Task2Messages.txt")
+	info, err := os.Stat("output/Task2TestMessages.txt")
 	if err != nil {
 		t.Fatalf("Expected file to exist but got error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestOpenFileCreatesFile(t *testing.T) {
 		t.Fatalf("Expected a file but found a directory")
 	}
 	// Cleanup
-	_ = os.Remove("output/Task2Messages.txt")
+	_ = os.Remove("output/Task2TestMessages.txt")
 }
 
 func TestWriteToFileAndReadLastTen_MoreThanTen(t *testing.T) {
@@ -78,10 +78,10 @@ func TestWriteToFileAndReadLastTen_MoreThanTen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
-	_ = os.Remove("output/Task2Messages.txt")
+	_ = os.Remove("output/Task2TestMessages.txt")
 
 	ctx := context.Background()
-	f := OpenFile(ctx)
+	f := OpenFile(ctx, "Task2TestMessages.txt")
 	if f == nil {
 		t.Fatalf("OpenFile returned nil file")
 	}
@@ -99,7 +99,7 @@ func TestWriteToFileAndReadLastTen_MoreThanTen(t *testing.T) {
 
 	// Capture stdout while calling ReadLastTen
 	out := captureStdout(t, func() {
-		ReadLastTen(ctx)
+		ReadLastTen(ctx, "Task2TestMessages.txt")
 	})
 
 	// Split printed lines and trim spaces/newlines
@@ -123,7 +123,7 @@ func TestWriteToFileAndReadLastTen_MoreThanTen(t *testing.T) {
 		}
 	}
 	// Cleanup
-	_ = os.Remove("output/Task2Messages.txt")
+	_ = os.Remove("output/Task2TestMessages.txt")
 }
 
 func TestReadLastTen_FewerThanTen(t *testing.T) {
@@ -132,10 +132,10 @@ func TestReadLastTen_FewerThanTen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
-	_ = os.Remove("output/Task2Messages.txt")
+	_ = os.Remove("output/Task2TestMessages.txt")
 
 	ctx := context.Background()
-	f := OpenFile(ctx)
+	f := OpenFile(ctx, "Task2TestMessages.txt")
 	if f == nil {
 		t.Fatalf("OpenFile returned nil file")
 	}
@@ -151,7 +151,7 @@ func TestReadLastTen_FewerThanTen(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		ReadLastTen(ctx)
+		ReadLastTen(ctx, "Task2TestMessages.txt")
 	})
 
 	printed := []string{}
@@ -173,5 +173,5 @@ func TestReadLastTen_FewerThanTen(t *testing.T) {
 		}
 	}
 	// Cleanup
-	_ = os.Remove("output/Task2Messages.txt")
+	_ = os.Remove("output/Task2TestMessages.txt")
 }
