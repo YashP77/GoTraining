@@ -27,12 +27,13 @@ func OpenFile(ctx context.Context, fileName string) *os.File {
 
 }
 
-func WriteToFile(ctx context.Context, file os.File, message string, userID int) {
+func WriteToFile(ctx context.Context, file os.File, message string, userID int) error {
 
 	userIDstring := strconv.Itoa(userID)
 	_, err := file.WriteString(message + " " + userIDstring + "\n")
 	errHand(err)
 	LogWithTrace(ctx, "Message successfully saved in file")
+	return err
 
 }
 
@@ -61,5 +62,16 @@ func ReadLastTen(ctx context.Context, fileName string) {
 	}
 
 	LogWithTrace(ctx, "Last 10 messages are successfully retrieved")
+
+}
+
+func AppendMessage(ctx context.Context, message string, userID int) error {
+
+	file := OpenFile(ctx, "Task3Messages.txt")
+	defer file.Close()
+
+	err := WriteToFile(ctx, *file, message, userID)
+
+	return err
 
 }
