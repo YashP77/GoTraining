@@ -8,60 +8,56 @@ import (
 	"testing"
 )
 
-// TestTraceIDEmpty verifies that an empty context returns an empty TraceID.
-func TestTraceIDEmpty(t *testing.T) {
+func TestTraceID_NoValue(t *testing.T) {
 	ctx := context.Background()
-	if got := TraceID(ctx); got != "" {
-		t.Fatalf("expected empty trace id for background context, got %q", got)
+	got := TraceID(ctx)
+	if got != "" {
+		t.Fatalf("expected empty string when no trace ID set, got %q", got)
 	}
 }
 
-// TestWithAndTraceID verifies that WithTraceID attaches the ID and TraceID reads it back,
-// and that the original context remains unchanged.
-func TestWithAndTraceID(t *testing.T) {
-	base := context.Background()
-	if TraceID(base) != "" {
-		t.Fatalf("expected base context to have empty trace id")
+func TestWithTraceID(t *testing.T) {
+	origCtx := context.Background()
+	if TraceID(origCtx) != "" {
+		t.Fatalf("expected original context to have empty TraceID")
 	}
 
-	id := "trace-12345"
-	ctx := WithTraceID(base, id)
-	if got := TraceID(ctx); got != id {
-		t.Fatalf("TraceID returned %q; want %q", got, id)
+	id := "TestTrace-123"
+	ctxWith := WithTraceID(origCtx, id)
+
+	// Original context still empty
+	if TraceID(origCtx) != "" {
+		t.Errorf("original context should remain unchanged; expected empty, got %q", TraceID(origCtx))
 	}
 
-	// Ensure base context still empty (function should not mutate original)
-	if TraceID(base) != "" {
-		t.Fatalf("expected original base context still to have empty trace id")
+	// New context has the id
+	if got := TraceID(ctxWith); got != id {
+		t.Fatalf("expected TraceID %q, got %q", id, got)
 	}
 }
 
-// TestLogWithTrace captures the standard logger output and ensures LogWithTrace
-// includes the trace id and message.
-func TestLogWithTrace(t *testing.T) {
-	// preserve original output and flags
-	origWriter := log.Writer()
-	origFlags := log.Flags()
-	defer func() {
-		log.SetOutput(origWriter)
-		log.SetFlags(origFlags)
-	}()
+func TestLogWithTraceOutput(t *testing.T) {
+
+	// Save and restore previous output
+	prev := log.Writer()
+	defer log.SetOutput(prev)
 
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
-	log.SetFlags(0) // simplify matching: remove timestamps etc.
 
-	id := "TID-999"
-	msg := "hello trace"
+	id := "log-TestTrace-1"
+	msg := "hello test"
+
 	ctx := WithTraceID(context.Background(), id)
-
 	LogWithTrace(ctx, msg)
 
 	out := buf.String()
-	if !strings.Contains(out, "[traceID="+id+"]") {
-		t.Fatalf("log output does not contain trace id; got: %q", out)
+
+	// Check substrings
+	if !strings.Contains(out, "traceID="+id) {
+		t.Fatalf("expected log output to contain traceID=%q; got %q", id, out)
 	}
 	if !strings.Contains(out, msg) {
-		t.Fatalf("log output does not contain message; got: %q", out)
+		t.Fatalf("expected log output to contain message %q; got %q", msg, out)
 	}
 }

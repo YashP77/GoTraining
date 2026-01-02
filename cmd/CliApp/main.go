@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"goTraining/internal"
 	"os"
 	"os/signal"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 )
+
+const outputFile = "output/messages.txt"
 
 func main() {
 
@@ -22,13 +25,19 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	// Create flags
-	message, userID := internal.CliFlags(ctx)
-	file := internal.OpenFile(ctx, "Task2Messages.txt")
+	message := flag.String("message", "", "Message from user")
+	userID := flag.Int("userID", 0, "ID of user")
+	flag.Parse()
+
+	// Create or locate file
+	file := internal.OpenFile(ctx, outputFile)
 	defer file.Close()
 
-	// Write and read logic
-	internal.WriteToFile(ctx, *file, message, userID)
-	internal.ReadLastTen(ctx, "Task2Messages.txt")
+	// Write to file
+	internal.WriteToFile(ctx, file, *message, *userID)
+
+	// Read and print last 10 lines of file
+	internal.ReadLastTen(ctx, outputFile)
 
 	// Shutdown
 	internal.LogWithTrace(ctx, "Application running. Press CTRL+C to exit")

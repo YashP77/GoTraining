@@ -10,42 +10,41 @@ import (
 	"strconv"
 )
 
-func errHand(err error) {
-	if err != nil {
-		slog.Error("Error")
-		log.Fatal(err)
-	}
-}
-
 func OpenFile(ctx context.Context, fileName string) *os.File {
 
-	messagesFileName := "output/" + fileName
-	file, err := os.OpenFile(messagesFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	errHand(err)
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		slog.Error("Error creating file")
+		log.Panic(err)
+	}
 	LogWithTrace(ctx, "File successfully created/located")
 	return file
-
 }
 
-func WriteToFile(ctx context.Context, file os.File, message string, userID int) error {
+func WriteToFile(ctx context.Context, file *os.File, message string, userID int) {
 
 	userIDstring := strconv.Itoa(userID)
 	_, err := file.WriteString(message + " " + userIDstring + "\n")
-	errHand(err)
+	if err != nil {
+		slog.Error("Error writing to file")
+		log.Panic(err)
+	}
 	LogWithTrace(ctx, "Message successfully saved in file")
-	return err
-
 }
 
 func ReadLastTen(ctx context.Context, fileName string) {
 
-	f, err := os.Open("output/" + fileName)
-	errHand(err)
-	defer f.Close()
+	file, err := os.Open(fileName)
+	if err != nil {
+		slog.Error("Error opening file")
+		log.Panic(err)
+	}
+	defer file.Close()
 
 	LogWithTrace(ctx, "File successfully read")
+	fmt.Println("Last 10 messages are:")
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(file)
 	var lines []string
 
 	for scanner.Scan() {
@@ -62,16 +61,4 @@ func ReadLastTen(ctx context.Context, fileName string) {
 	}
 
 	LogWithTrace(ctx, "Last 10 messages are successfully retrieved")
-
-}
-
-func AppendMessage(ctx context.Context, message string, userID int) error {
-
-	file := OpenFile(ctx, "Task3Messages.txt")
-	defer file.Close()
-
-	err := WriteToFile(ctx, *file, message, userID)
-
-	return err
-
 }

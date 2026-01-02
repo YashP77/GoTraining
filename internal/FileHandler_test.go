@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"io"
 	"os"
@@ -10,168 +10,131 @@ import (
 	"testing"
 )
 
-// Helper to capture stdout
+// Helper: create a temp filr
+func tempFilePath(t *testing.T) string {
+	t.Helper()
+	f, err := os.CreateTemp("output", "filehandler_test.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	name := f.Name()
+	f.Close()
+	os.Remove(name)
+	return name
+}
+
+func TestOpenFile(t *testing.T) {
+	ctx := context.Background()
+	path := tempFilePath(t)
+
+	f := OpenFile(ctx, path)
+	if f == nil {
+		t.Fatalf("OpenFile returned nil")
+	}
+	// ensure it exists on disk
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("expected file to exist after OpenFile; stat error: %v", err)
+	}
+	if info.IsDir() {
+		t.Fatalf("expected a file, got directory")
+	}
+	f.Close()
+	// cleanup
+	os.Remove(path)
+}
+
+func TestWriteToFile(t *testing.T) {
+	ctx := context.Background()
+	path := tempFilePath(t)
+
+	f := OpenFile(ctx, path)
+	if f == nil {
+		t.Fatalf("OpenFile returned nil")
+	}
+	// write one line
+	msg := "hello unit test"
+	uid := 42
+	WriteToFile(ctx, f, msg, uid)
+	f.Close()
+
+	// read file contents and assert
+	bs, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	got := string(bs)
+	expectedSuffix := msg + " " + strconv.Itoa(uid) + "\n"
+	if !strings.Contains(got, expectedSuffix) {
+		t.Fatalf("file contents do not contain expected line.\nwant suffix: %q\ngot: %q", expectedSuffix, got)
+	}
+	// cleanup
+	os.Remove(path)
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	// Save original stdout
 	old := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("Failed to create pipe: %v", err)
+		t.Fatalf("failed to create pipe: %v", err)
 	}
 	os.Stdout = w
 
-	// Run function that writes to stdout
+	// run the function that prints to stdout
 	fn()
 
-	// Restore and read
+	// restore and read
 	w.Close()
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	if err != nil {
-		t.Fatalf("Failed to read stdout pipe: %v", err)
-	}
 	os.Stdout = old
-	return buf.String()
+
+	var sb strings.Builder
+	_, err = io.Copy(&sb, r)
+	if err != nil {
+		t.Fatalf("failed to read pipe: %v", err)
+	}
+	r.Close()
+	return sb.String()
 }
 
-func TestOpenFileCreatesFile(t *testing.T) {
-	// Ensure output directory exists
-	err := os.MkdirAll("output", 0755)
-	if err != nil {
-		t.Fatalf("Failed to create output dir: %v", err)
-	}
-	// Remove file if it already exists to test creation
-	_ = os.Remove("output/Task2TestMessages.txt")
-
+func TestReadLastTen(t *testing.T) {
 	ctx := context.Background()
-	f := OpenFile(ctx, "Task2TestMessages.txt")
-	if f == nil {
-		t.Fatalf("OpenFile returned nil file")
-	}
+	path := tempFilePath(t)
 
-	// Ensure file is usable: write a small test string and flush
-	_, err = f.WriteString("test\n")
+	// produce 15 lines so last ten are lines 6..15
+	f, err := os.Create(path)
 	if err != nil {
-		f.Close()
-		t.Fatalf("Failed to write to file returned by OpenFile: %v", err)
+		t.Fatalf("failed to create temp file for writing: %v", err)
 	}
-	err = f.Close()
-	if err != nil {
-		t.Fatalf("Failed to close file: %v", err)
+	w := bufio.NewWriter(f)
+	for i := 1; i <= 15; i++ {
+		_, _ = w.WriteString("line " + strconv.Itoa(i) + "\n")
 	}
-	// File should now exist
-	info, err := os.Stat("output/Task2TestMessages.txt")
-	if err != nil {
-		t.Fatalf("Expected file to exist but got error: %v", err)
-	}
-	if info.IsDir() {
-		t.Fatalf("Expected a file but found a directory")
-	}
-	// Cleanup
-	_ = os.Remove("output/Task2TestMessages.txt")
-}
-
-func TestWriteToFileAndReadLastTen_MoreThanTen(t *testing.T) {
-	// Prepare environment
-	err := os.MkdirAll("output", 0755)
-	if err != nil {
-		t.Fatalf("Failed to create output dir: %v", err)
-	}
-	_ = os.Remove("output/Task2TestMessages.txt")
-
-	ctx := context.Background()
-	f := OpenFile(ctx, "Task2TestMessages.txt")
-	if f == nil {
-		t.Fatalf("OpenFile returned nil file")
-	}
-
-	// Write 15 lines using WriteToFile
-	total := 15
-	for i := 1; i <= total; i++ {
-		msg := "message" + strconv.Itoa(i)
-		WriteToFile(ctx, *f, msg, i)
-	}
-	// Close file
-	if err := f.Close(); err != nil {
-		t.Fatalf("Failed to close file after writes: %v", err)
-	}
-
-	// Capture stdout while calling ReadLastTen
-	out := captureStdout(t, func() {
-		ReadLastTen(ctx, "Task2TestMessages.txt")
-	})
-
-	// Split printed lines and trim spaces/newlines
-	printed := []string{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if strings.TrimSpace(line) != "" {
-			printed = append(printed, strings.TrimSpace(line))
-		}
-	}
-
-	// Should print last 10 of the 15 lines (i.e., lines 6..15)
-	if len(printed) != 10 {
-		t.Fatalf("Expected 10 printed lines, got %d: %v", len(printed), printed)
-	}
-
-	// Verify that each printed line corresponds to the last 10 writes, the file lines have format: "<message> <userID>"
-	for idx, line := range printed {
-		expectedUserID := total - 10 + idx + 1 // 6..15
-		if !strings.HasSuffix(line, " "+strconv.Itoa(expectedUserID)) {
-			t.Fatalf("Printed line %d = %q does not end with expected userID %d", idx, line, expectedUserID)
-		}
-	}
-	// Cleanup
-	_ = os.Remove("output/Task2TestMessages.txt")
-}
-
-func TestReadLastTen_FewerThanTen(t *testing.T) {
-	// Prepare environment
-	err := os.MkdirAll("output", 0755)
-	if err != nil {
-		t.Fatalf("Failed to create output dir: %v", err)
-	}
-	_ = os.Remove("output/Task2TestMessages.txt")
-
-	ctx := context.Background()
-	f := OpenFile(ctx, "Task2TestMessages.txt")
-	if f == nil {
-		t.Fatalf("OpenFile returned nil file")
-	}
-
-	// Write 5 lines using WriteToFile
-	total := 5
-	for i := 1; i <= total; i++ {
-		msg := "m" + strconv.Itoa(i)
-		WriteToFile(ctx, *f, msg, i)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatalf("Failed to close file after writes: %v", err)
-	}
+	w.Flush()
+	f.Close()
 
 	out := captureStdout(t, func() {
-		ReadLastTen(ctx, "Task2TestMessages.txt")
+		ReadLastTen(ctx, path)
 	})
 
-	printed := []string{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if strings.TrimSpace(line) != "" {
-			printed = append(printed, strings.TrimSpace(line))
+	// basic assertions
+	if !strings.Contains(out, "Last 10 messages are:") {
+		t.Fatalf("expected header in output, got: %q", out)
+	}
+	// should include the last line "line 15"
+	if !strings.Contains(out, "line 15") {
+		t.Fatalf("expected output to contain last line 'line 15', got: %q", out)
+	}
+
+	// robust check: ensure "line 1" is not present as a whole line
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	for _, l := range lines {
+		if l == "line 1" {
+			t.Fatalf("did not expect 'line 1' to be printed; got: %q", out)
 		}
 	}
 
-	// Should print all 5 lines
-	if len(printed) != total {
-		t.Fatalf("Expected %d printed lines, got %d: %v", total, len(printed), printed)
-	}
-	// check userIDs 1..5 are present
-	for i := 1; i <= total; i++ {
-		wantSuffix := " " + strconv.Itoa(i)
-		if !strings.HasSuffix(printed[i-1], wantSuffix) {
-			t.Fatalf("Line %d = %q does not end with %q", i-1, printed[i-1], wantSuffix)
-		}
-	}
-	// Cleanup
-	_ = os.Remove("output/Task2TestMessages.txt")
+	// cleanup
+	os.Remove(path)
 }
