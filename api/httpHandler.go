@@ -1,10 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"goTraining/internal"
+	"log"
 	"net/http"
 )
+
+type key string
+
+const k key = "traceID"
 
 type createMessageRequest struct {
 	Message string `json:"message"`
@@ -14,6 +20,14 @@ type createMessageRequest struct {
 type createMessageResponse struct {
 	TraceID string `json:"traceID"`
 	Status  string `json:"status"`
+}
+
+func getTraceID(ctx context.Context) string {
+	v := ctx.Value(k)
+	if v == nil {
+		return ""
+	}
+	return v.(string)
 }
 
 // Expects POST /messages with JSON body
@@ -28,7 +42,7 @@ func CreateMessageHandler(w http.ResponseWriter, r http.Request, outputFile stri
 
 	var req createMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		internal.LogWithTrace(ctx, "invalid request"+err.Error())
+		log.Printf("[traceID=%s] %s", getTraceID(ctx), "invalid request"+err.Error())
 		http.Error(w, "bad request: inavlid JSON", http.StatusBadRequest)
 		return
 	}
@@ -39,7 +53,7 @@ func CreateMessageHandler(w http.ResponseWriter, r http.Request, outputFile stri
 	internal.WriteToFile(ctx, file, req.Message, req.UserID)
 
 	// response
-	traceID := internal.TraceID(ctx)
+	traceID := getTraceID(ctx)
 	resp := createMessageResponse{
 		TraceID: traceID,
 		Status:  "saved",

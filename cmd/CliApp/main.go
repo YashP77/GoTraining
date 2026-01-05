@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"goTraining/internal"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,14 +14,26 @@ import (
 
 const outputFile = "output/messages.txt"
 
+type key string
+
+const k key = "traceID"
+
+func getTraceID(ctx context.Context) string {
+	v := ctx.Value(k)
+	if v == nil {
+		return ""
+	}
+	return v.(string)
+}
+
 func main() {
 
 	// Create context and add TraceID
 	ctx := context.Background()
-	ctx = internal.WithTraceID(ctx, uuid.NewString())
+	ctx = context.WithValue(ctx, k, uuid.NewString())
 
 	// Create signal
-	internal.LogWithTrace(ctx, "Starting application")
+	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Starting application")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -40,9 +53,9 @@ func main() {
 	internal.ReadLastTen(ctx, outputFile)
 
 	// Shutdown
-	internal.LogWithTrace(ctx, "Application running. Press CTRL+C to exit")
+	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Application running. Press CTRL+C to exit")
 	sig := <-sigChan
-	internal.LogWithTrace(ctx, "Received signal: "+sig.String())
-	internal.LogWithTrace(ctx, "Shutting down gracefully")
+	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Received signal: "+sig.String())
+	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Shutting down gracefully")
 
 }
