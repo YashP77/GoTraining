@@ -46,7 +46,7 @@ func TestLogWithTraceOutput(t *testing.T) {
 	log.SetOutput(&buf)
 
 	id := "log-TestTrace-1"
-	msg := "hello test"
+	msg := "test"
 
 	ctx := WithTraceID(context.Background(), id)
 	LogWithTrace(ctx, msg)

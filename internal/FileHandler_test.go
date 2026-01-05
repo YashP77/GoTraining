@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// Helper: create a temp filr
+// Helper: create a temp file
 func tempFilePath(t *testing.T) string {
 	t.Helper()
 	f, err := os.CreateTemp("output", "filehandler_test.txt")
@@ -31,7 +31,7 @@ func TestOpenFile(t *testing.T) {
 	if f == nil {
 		t.Fatalf("OpenFile returned nil")
 	}
-	// ensure it exists on disk
+
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("expected file to exist after OpenFile; stat error: %v", err)
@@ -40,7 +40,6 @@ func TestOpenFile(t *testing.T) {
 		t.Fatalf("expected a file, got directory")
 	}
 	f.Close()
-	// cleanup
 	os.Remove(path)
 }
 
@@ -52,13 +51,12 @@ func TestWriteToFile(t *testing.T) {
 	if f == nil {
 		t.Fatalf("OpenFile returned nil")
 	}
-	// write one line
+
 	msg := "hello unit test"
 	uid := 42
 	WriteToFile(ctx, f, msg, uid)
 	f.Close()
 
-	// read file contents and assert
 	bs, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -66,9 +64,8 @@ func TestWriteToFile(t *testing.T) {
 	got := string(bs)
 	expectedSuffix := msg + " " + strconv.Itoa(uid) + "\n"
 	if !strings.Contains(got, expectedSuffix) {
-		t.Fatalf("file contents do not contain expected line.\nwant suffix: %q\ngot: %q", expectedSuffix, got)
+		t.Fatalf("expected line not found in file.\nwant suffix: %q\ngot: %q", expectedSuffix, got)
 	}
-	// cleanup
 	os.Remove(path)
 }
 
@@ -82,10 +79,10 @@ func captureStdout(t *testing.T, fn func()) string {
 	}
 	os.Stdout = w
 
-	// run the function that prints to stdout
+	// Print to stdout
 	fn()
 
-	// restore and read
+	// Restore and read
 	w.Close()
 	os.Stdout = old
 
@@ -102,7 +99,7 @@ func TestReadLastTen(t *testing.T) {
 	ctx := context.Background()
 	path := tempFilePath(t)
 
-	// produce 15 lines so last ten are lines 6..15
+	// Produce 15 lines
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("failed to create temp file for writing: %v", err)
@@ -118,16 +115,13 @@ func TestReadLastTen(t *testing.T) {
 		ReadLastTen(ctx, path)
 	})
 
-	// basic assertions
 	if !strings.Contains(out, "Last 10 messages are:") {
 		t.Fatalf("expected header in output, got: %q", out)
 	}
-	// should include the last line "line 15"
 	if !strings.Contains(out, "line 15") {
 		t.Fatalf("expected output to contain last line 'line 15', got: %q", out)
 	}
 
-	// robust check: ensure "line 1" is not present as a whole line
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	for _, l := range lines {
 		if l == "line 1" {
@@ -135,6 +129,5 @@ func TestReadLastTen(t *testing.T) {
 		}
 	}
 
-	// cleanup
 	os.Remove(path)
 }
