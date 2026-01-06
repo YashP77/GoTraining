@@ -10,8 +10,10 @@ import (
 	"strconv"
 )
 
+const Key string = "traceID"
+
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value("traceID")
+	v := ctx.Value(Key)
 	if v == nil {
 		return ""
 	}
@@ -25,7 +27,7 @@ func OpenFile(ctx context.Context, fileName string) *os.File {
 		slog.Error("Error creating file")
 		log.Panic(err)
 	}
-	log.Printf("[traceID=%s] %s", getTraceID(ctx), "File successfully created/located")
+	slog.Info("File successfully created/located", "traceID", getTraceID(ctx))
 	return file
 }
 
@@ -37,7 +39,7 @@ func WriteToFile(ctx context.Context, file *os.File, message string, userID int)
 		slog.Error("Error writing to file")
 		log.Panic(err)
 	}
-	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Message successfully saved in file")
+	slog.Info("Message successfuly saving in file", "traceID", getTraceID(ctx))
 }
 
 func ReadLastTen(ctx context.Context, fileName string) {
@@ -49,7 +51,7 @@ func ReadLastTen(ctx context.Context, fileName string) {
 	}
 	defer file.Close()
 
-	log.Printf("[traceID=%s] %s", getTraceID(ctx), "File successfully read")
+	slog.Info("File successfully read", "traceID", getTraceID(ctx))
 	fmt.Println("Last 10 messages are:")
 
 	scanner := bufio.NewScanner(file)
@@ -68,5 +70,5 @@ func ReadLastTen(ctx context.Context, fileName string) {
 		fmt.Println(line)
 	}
 
-	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Last 10 messages are successfully retrieved")
+	slog.Info("Last 10 messages are successfully retrieved", "traceID", getTraceID(ctx))
 }

@@ -8,10 +8,6 @@ import (
 	"net/http"
 )
 
-type key string
-
-const k key = "traceID"
-
 type createMessageRequest struct {
 	Message string `json:"message"`
 	UserID  int    `json:"userID"`
@@ -23,7 +19,7 @@ type createMessageResponse struct {
 }
 
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value(k)
+	v := ctx.Value(internal.Key)
 	if v == nil {
 		return ""
 	}
@@ -31,7 +27,7 @@ func getTraceID(ctx context.Context) string {
 }
 
 // Expects POST /messages with JSON body
-func CreateMessageHandler(w http.ResponseWriter, r http.Request, outputFile string) {
+func CreateMessageHandler(w http.ResponseWriter, r *http.Request, outputFile string) {
 
 	ctx := r.Context()
 
@@ -51,6 +47,7 @@ func CreateMessageHandler(w http.ResponseWriter, r http.Request, outputFile stri
 	file := internal.OpenFile(ctx, outputFile)
 	defer file.Close()
 	internal.WriteToFile(ctx, file, req.Message, req.UserID)
+	internal.ReadLastTen(ctx, outputFile)
 
 	// response
 	traceID := getTraceID(ctx)

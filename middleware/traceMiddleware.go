@@ -2,18 +2,15 @@ package middleware
 
 import (
 	"context"
-	"log"
+	"goTraining/internal"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
 )
 
-type key string
-
-const k key = "traceID"
-
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value(k)
+	v := ctx.Value(internal.Key)
 	if v == nil {
 		return ""
 	}
@@ -26,15 +23,18 @@ func TraceMiddleware(next http.Handler) http.Handler {
 		// Get traceID from header or assign new one if empty
 		traceID := r.Header.Get("TraceID")
 		if traceID == "" {
-			traceID = uuid.NewString() + "Generated"
+			traceID = getTraceID(r.Context())
+		}
+		if traceID == "" {
+			traceID = uuid.NewString()
 		}
 
 		// Create context and add to request
-		ctx := context.WithValue(r.Context(), k, traceID)
+		ctx := context.WithValue(r.Context(), internal.Key, traceID)
 		r = r.WithContext(ctx)
+		slog.Info("TraceID has been has been attached to request", "traceID", getTraceID(r.Context()))
 
 		next.ServeHTTP(w, r)
-		log.Printf("[traceID=%s] %s", getTraceID(r.Context()), "TraceID has been attached to request")
 
 	})
 }
