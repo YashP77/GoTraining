@@ -1,7 +1,6 @@
 # GoTraining
 
-Run Task1: go run .cmd\Task1 -message="(message string)" -userID="(userID int)
+Run App: go run .cmd\CliApp -message="(message string)" -userID="(userID int)"
+Exit TaskApp: CTRL + C
 
-Run Task2: go run .cmd\Task2 -message="(message string)" -userID="(userID int) 
-Exit Task2: CTRL + C
-
+curl -X POST http://localhost:8080/messages   -H "Content-Type: application/json"   -d '{"message":"(message string)","userID":(userID int)}'

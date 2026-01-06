@@ -8,8 +8,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type key string
+
+const k key = "traceID"
+
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value("traceID")
+	v := ctx.Value(k)
 	if v == nil {
 		return ""
 	}
@@ -19,14 +23,14 @@ func getTraceID(ctx context.Context) string {
 func TraceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		// Get traceID from header or assign new one if empty
 		traceID := r.Header.Get("TraceID")
 		if traceID == "" {
-			traceID = uuid.NewString()
+			traceID = uuid.NewString() + "Generated"
 		}
 
-		ctx := context.WithValue(r.Context(), "traceID", traceID)
-
-		// Attach ctx to request
+		// Create context and add to request
+		ctx := context.WithValue(r.Context(), k, traceID)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

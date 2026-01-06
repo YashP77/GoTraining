@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"flag"
+	"goTraining/api"
 	"goTraining/internal"
+	"goTraining/middleware"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/google/uuid"
+	// "github.com/google/uuid"
 )
 
 const outputFile = "output/messages.txt"
@@ -30,29 +31,32 @@ func main() {
 
 	// Create context and add TraceID
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, k, uuid.NewString())
+
+	log.Printf("Starting server")
+
+	mux := http.NewServeMux()
+	mux.Handle("/messages", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		api.CreateMessageHandler(w, *r, outputFile)
+	})))
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
 
 	// Create signal
-	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Starting application")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Create flags
-	message := flag.String("message", "", "Message from user")
-	userID := flag.Int("userID", 0, "ID of user")
-	flag.Parse()
+	go func() {
+		log.Printf("server listening on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe: %v", err)
+		}
+	}()
 
-	// Create or locate file
-	file := internal.OpenFile(ctx, outputFile)
-	defer file.Close()
-
-	// Write to file
-	internal.WriteToFile(ctx, file, *message, *userID)
-
-	// Read and print last 10 lines of file
 	internal.ReadLastTen(ctx, outputFile)
 
-	// Shutdown
 	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Application running. Press CTRL+C to exit")
 	sig := <-sigChan
 	log.Printf("[traceID=%s] %s", getTraceID(ctx), "Received signal: "+sig.String())
