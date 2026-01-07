@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"goTraining/internal"
-	"log"
+	"log/slog"
 	"net/http"
 )
+
+const key string = "traceID"
 
 type createMessageRequest struct {
 	Message string `json:"message"`
@@ -19,7 +21,7 @@ type createMessageResponse struct {
 }
 
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value(internal.Key)
+	v := ctx.Value(key)
 	if v == nil {
 		return ""
 	}
@@ -31,14 +33,16 @@ func CreateMessageHandler(w http.ResponseWriter, r *http.Request, outputFile str
 
 	ctx := r.Context()
 
+	// Ensure only post methods are allowed
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
+	// Decode request body
 	var req createMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("[traceID=%s] %s", getTraceID(ctx), "invalid request"+err.Error())
+		slog.Error("invalid request"+err.Error(), "traceID", getTraceID(ctx))
 		http.Error(w, "bad request: inavlid JSON", http.StatusBadRequest)
 		return
 	}
@@ -49,10 +53,9 @@ func CreateMessageHandler(w http.ResponseWriter, r *http.Request, outputFile str
 	internal.WriteToFile(ctx, file, req.Message, req.UserID)
 	internal.ReadLastTen(ctx, outputFile)
 
-	// response
-	traceID := getTraceID(ctx)
+	// Perpare and encode response
 	resp := createMessageResponse{
-		TraceID: traceID,
+		TraceID: getTraceID(ctx),
 		Status:  "saved",
 	}
 	w.Header().Set("Content-Type", "application/json")

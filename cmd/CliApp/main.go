@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"goTraining/api"
-	"goTraining/internal"
 	"goTraining/middleware"
 	"log"
 	"log/slog"
@@ -15,9 +14,10 @@ import (
 )
 
 const outputFile = "output/messages.txt"
+const key string = "traceID"
 
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value(internal.Key)
+	v := ctx.Value(key)
 	if v == nil {
 		return ""
 	}
@@ -29,17 +29,19 @@ func main() {
 	// Create root context
 	rootCtx := context.Background()
 
-	// Create signal
+	// Create channel for shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	slog.Info("Starting server")
 
+	// Create router
 	mux := http.NewServeMux()
 	mux.Handle("/messages", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		api.CreateMessageHandler(w, r, outputFile)
 	})))
 
+	// Server config
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,
@@ -48,6 +50,7 @@ func main() {
 		},
 	}
 
+	// Start server asynch
 	go func() {
 		slog.Info("Server listening on " + srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -57,10 +60,9 @@ func main() {
 
 	slog.Info("Application running. Press CTRL+C to exit")
 
+	// Shutdown
 	sig := <-sigChan
-
-	logger := slog.With("traceID", getTraceID(rootCtx))
-	logger.Info("Received signal: " + sig.String())
-	logger.Info("Shutting down")
+	slog.Info("Received signal: " + sig.String())
+	slog.Info("Shutting down")
 
 }
