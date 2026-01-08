@@ -9,10 +9,10 @@ import (
 	"strconv"
 )
 
-const Key string = "traceID"
+const key string = "traceID"
 
 func getTraceID(ctx context.Context) string {
-	v := ctx.Value(Key)
+	v := ctx.Value(key)
 	if v == nil {
 		return ""
 	}
@@ -58,22 +58,9 @@ func ReadLastTen(ctx context.Context, fileName string) []string {
 	}
 
 	if len(lines) <= 10 {
-		slog.Info("File successfully read and shown on /list endpoint")
+		slog.Info("File successfully read", "traceID", getTraceID(ctx))
 		return lines
 	}
-	slog.Info("File successfully read and shown on /list endpoint")
+	slog.Info("File successfully read", "traceID", getTraceID(ctx))
 	return lines[len(lines)-10:]
-
-	// start := len(lines) - 10
-	// if start < 0 {
-	// 	start = 0
-	// }
-
-	// for _, line := range lines[start:] {
-	// 	fmt.Println(line)
-	// }
-
-	// return lines
-
-	// slog.Info("Last 10 messages are successfully retrieved", "traceID", getTraceID(ctx))
 }

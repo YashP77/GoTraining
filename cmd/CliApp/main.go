@@ -65,7 +65,7 @@ func main() {
 
 	// Dynamic list page
 	mux.Handle("/list/", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lines := internal.ReadLastTen(rootCtx, outputFile)
+		lines := internal.ReadLastTen(r.Context(), outputFile)
 
 		w.Header().Set("Content-Type", "text/html")
 		_ = listTmpl.Execute(w, lines)
