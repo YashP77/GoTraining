@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"goTraining/api"
+	"goTraining/internal"
 	"goTraining/middleware"
 	"log"
 	"log/slog"
@@ -11,10 +12,27 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"text/template"
 )
 
 const outputFile = "output/messages.txt"
 const key string = "traceID"
+
+var listTmpl = template.Must(template.New("list").Parse(`
+<!doctype html>
+<html>
+<body>
+<h1>Last 10 Messages</h1>
+<ul>
+{{range .}}
+  <li>{{.}}</li>
+{{else}}
+  <li>No messages</li>
+{{end}}
+</ul>
+</body>
+</html>
+`))
 
 func getTraceID(ctx context.Context) string {
 	v := ctx.Value(key)
@@ -40,6 +58,19 @@ func main() {
 	mux.Handle("/messages", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		api.CreateMessageHandler(w, r, outputFile)
 	})))
+
+	// Static about page
+	fs := http.FileServer((http.Dir("cmd/CliApp/static/about")))
+	mux.Handle("/about/", http.StripPrefix("/about/", fs))
+
+	// Dynamic list page
+	mux.Handle("/list/", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lines := internal.ReadLastTen(rootCtx, outputFile)
+
+		w.Header().Set("Content-Type", "text/html")
+		_ = listTmpl.Execute(w, lines)
+	}),
+	))
 
 	// Server config
 	srv := &http.Server{

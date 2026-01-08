@@ -3,7 +3,6 @@ package internal
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -42,7 +41,7 @@ func WriteToFile(ctx context.Context, file *os.File, message string, userID int)
 	slog.Info("Message successfuly saving in file", "traceID", getTraceID(ctx))
 }
 
-func ReadLastTen(ctx context.Context, fileName string) {
+func ReadLastTen(ctx context.Context, fileName string) []string {
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -51,9 +50,6 @@ func ReadLastTen(ctx context.Context, fileName string) {
 	}
 	defer file.Close()
 
-	slog.Info("File successfully read", "traceID", getTraceID(ctx))
-	fmt.Println("Last 10 messages are:")
-
 	scanner := bufio.NewScanner(file)
 	var lines []string
 
@@ -61,14 +57,23 @@ func ReadLastTen(ctx context.Context, fileName string) {
 		lines = append(lines, scanner.Text())
 	}
 
-	start := len(lines) - 10
-	if start < 0 {
-		start = 0
+	if len(lines) <= 10 {
+		slog.Info("File successfully read and shown on /list endpoint")
+		return lines
 	}
+	slog.Info("File successfully read and shown on /list endpoint")
+	return lines[len(lines)-10:]
 
-	for _, line := range lines[start:] {
-		fmt.Println(line)
-	}
+	// start := len(lines) - 10
+	// if start < 0 {
+	// 	start = 0
+	// }
 
-	slog.Info("Last 10 messages are successfully retrieved", "traceID", getTraceID(ctx))
+	// for _, line := range lines[start:] {
+	// 	fmt.Println(line)
+	// }
+
+	// return lines
+
+	// slog.Info("Last 10 messages are successfully retrieved", "traceID", getTraceID(ctx))
 }
