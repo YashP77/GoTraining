@@ -13,9 +13,10 @@ import (
 	"os/signal"
 	"syscall"
 	"text/template"
+
+	"github.com/gorilla/websocket"
 )
 
-const outputFile = "output/messages.txt"
 const key string = "traceID"
 
 var listTmpl = template.Must(template.New("list").Parse(`
@@ -34,12 +35,8 @@ var listTmpl = template.Must(template.New("list").Parse(`
 </html>
 `))
 
-func getTraceID(ctx context.Context) string {
-	v := ctx.Value(key)
-	if v == nil {
-		return ""
-	}
-	return v.(string)
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 func main() {
@@ -55,9 +52,7 @@ func main() {
 
 	// Create router
 	mux := http.NewServeMux()
-	mux.Handle("/messages", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		api.CreateMessageHandler(w, r, outputFile)
-	})))
+	mux.Handle("/messages", middleware.TraceMiddleware(http.HandlerFunc(api.MessageHandler)))
 
 	// Static about page
 	fs := http.FileServer((http.Dir("cmd/CliApp/static/about")))
@@ -65,12 +60,32 @@ func main() {
 
 	// Dynamic list page
 	mux.Handle("/list/", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lines := internal.ReadLastTen(r.Context(), outputFile)
+		lines := internal.ReadLastTen(r.Context(), api.OutputFile)
 
 		w.Header().Set("Content-Type", "text/html")
 		_ = listTmpl.Execute(w, lines)
-	}),
-	))
+	})))
+
+	// Websocket last 10
+	mux.Handle("/ws-last10", middleware.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			slog.Warn("websocket upgrade failed", "err", err)
+			return
+		}
+		defer conn.Close()
+
+		lines := internal.ReadLastTen(r.Context(), api.OutputFile)
+
+		for _, l := range lines {
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(l)); err != nil {
+				slog.Warn("websocket write failed", "err", err)
+				return
+			}
+		}
+
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "sent last 10 messages"))
+	})))
 
 	// Server config
 	srv := &http.Server{
