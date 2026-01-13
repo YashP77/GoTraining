@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package messages.v1;
+
+option go_package = "/proto;proto";
+
+service MessageService {
+    rpc SaveMessage (SaveMessageRequest) returns (SaveMessageResponse);
+
+    rpc GetLast10 (GetLast10Request) returns (GetLast10Response);
+}
+
+message SaveMessageRequest {
+  string message = 1;
+  int32 userID = 2;
+}
+
+message SaveMessageResponse {
+
+}
+
+message GetLast10Request {
+    
+}
+
+message GetLast10Response {
+  repeated string messages = 1;
+}
