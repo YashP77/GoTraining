@@ -6,6 +6,7 @@ import (
 	"goTraining/internal"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 const OutputFile = "output/messages.txt"
@@ -52,6 +53,8 @@ func MessageHandler(w http.ResponseWriter, r *http.Request) {
 	file := internal.OpenFile(ctx, OutputFile)
 	defer file.Close()
 	internal.WriteToFile(ctx, file, req.Message, req.UserID)
+
+	internal.Publish(req.Message + " " + strconv.Itoa(req.UserID))
 
 	// Perpare and encode response
 	resp := createMessageResponse{

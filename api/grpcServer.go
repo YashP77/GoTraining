@@ -21,6 +21,7 @@ func (s *server) SaveMessage(ctx context.Context, req *pb.SaveMessageRequest) (*
 	defer file.Close()
 
 	internal.WriteToFile(ctx, file, req.Message, int(req.UserID))
+	internal.Publish(req.Message + " " + string(req.UserID))
 	return &pb.SaveMessageResponse{}, nil
 }
 

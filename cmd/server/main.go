@@ -41,6 +41,8 @@ var upgrader = websocket.Upgrader{
 
 func main() {
 
+	internal.StartActor()
+
 	// Create root context
 	rootCtx := context.Background()
 
@@ -84,7 +86,16 @@ func main() {
 			}
 		}
 
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "sent last 10 messages"))
+		sub := internal.Subscribe()
+		defer internal.Unsubscribe(sub)
+
+		// Send incoming published messages until error
+		for msg := range sub {
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+				slog.Warn("websocket write failed", "err", err)
+				return
+			}
+		}
 	})))
 
 	// Server config

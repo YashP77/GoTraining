@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"log/slog"
 	"net"
 
 	"goTraining/api"
+	"goTraining/internal"
 	pb "goTraining/proto"
 
 	"google.golang.org/grpc"
@@ -16,10 +16,9 @@ func main() {
 	filePath := "output/messages.txt"
 	addr := ":50051"
 
+	internal.StartActor()
+
 	slog.Info("start gRPC server", "running on", addr, "storage", filePath)
-
-	log.Printf("starting gRPC server on %s (storage: %s)\n", addr, filePath)
-
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		slog.Error("listen failed", "err", err)
