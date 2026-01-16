@@ -28,12 +28,12 @@ func TraceMiddleware(next http.Handler) http.Handler {
 		}
 		if traceID == "" {
 			traceID = uuid.NewString()
-			slog.Info("TraceID has been has been attached to request", "traceID", getTraceID(r.Context()))
 		}
 
 		// Create context and add to request
 		ctx := context.WithValue(r.Context(), key, traceID)
 		r = r.WithContext(ctx)
+		slog.Info("New traceID has been generated", "traceID", getTraceID(r.Context()))
 
 		next.ServeHTTP(w, r)
 
